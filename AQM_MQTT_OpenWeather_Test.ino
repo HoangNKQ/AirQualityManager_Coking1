@@ -147,13 +147,14 @@ void loop() {
   displayContent();
   publishMQTT();
 }
-//Interrupt Service Routine for button.
+
+//Interrupt Service Routine for changing Display mode.
 void changeDisplay()
 {
   if (millis() - debounceTimer >= debounce)
   {
     mode = mode + 1;
-    if (mode == 3)
+    if (mode == 4)
     {
       mode = 0;
     }
@@ -161,6 +162,8 @@ void changeDisplay()
   }
 }
 
+//Make API call to OpenWeatherMap
+//Parse Json string to get weather data and save to global variables
 void getOpenWeatherMapData()
 {
    // Send an HTTP GET request
@@ -195,6 +198,7 @@ void getOpenWeatherMapData()
   }
 }
 
+//Send HTTP GET request to Server and return responeded Json string as payload
 String httpGETRequest(const char* serverName) {
   HTTPClient http;
     
@@ -253,10 +257,14 @@ void displayContent()
       break;
       
     case 1:
-      displayPMS();
+      displayBME();
       break;
 
     case 2:
+      displayPMS();
+      break;
+      
+    case 3:
       displayOpenWeatherMap();
       break;
   }
