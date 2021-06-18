@@ -47,7 +47,7 @@ Adafruit_ST7735 tft =  Adafruit_ST7735 (TFT_CS, TFT_DC, TFT_RST);
 //For BME280
 Adafruit_BME280 bme;
 
-//Initialize UART1
+//Initialize UART2
 HardwareSerial pmsSerial(2);
 
 //Initialize PMS
@@ -109,7 +109,7 @@ void setup() {
   pinMode(button, INPUT_PULLUP);
   
   Serial.begin(9600);
-  pmsSerial.begin(9600, SERIAL_8N1, RXD, TXD); //Start UART1 
+  pmsSerial.begin(9600, SERIAL_8N1, RXD, TXD); //Start UART2
 
   unsigned status = bme.begin(0x76);
   if (!status){
