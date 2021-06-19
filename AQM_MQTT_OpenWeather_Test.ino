@@ -69,7 +69,7 @@ const char* mqtt_server = "test.mosquitto.org";
 
 //Variable for MQTT publish timing 
 unsigned long int lastMqttMsg = 0;
-const int delayMqttMsg = 5000;
+const int delayMqttMsg = 10000;
 
 //Variables to store sensors' values
 volatile unsigned int pm1_0 = 0;
@@ -99,7 +99,7 @@ String serverPath = "http://api.openweathermap.org/data/2.5/weather?q=" + city +
 
 //Variable for API call timing
 unsigned long lastAPICall = 0;
-unsigned long delayAPI = 10000; //10s for testing
+unsigned long delayAPI = 60000; //10s for testing
 
 //String to store json
 String jsonBuffer;
@@ -109,7 +109,7 @@ void setup() {
   pinMode(button, INPUT_PULLUP);
   
   Serial.begin(9600);
-  pmsSerial.begin(9600, SERIAL_8N1, RXD, TXD); //Start UART2
+  pmsSerial.begin(9600, SERIAL_8N1, RXD, TXD); //Start UART2 
 
   unsigned status = bme.begin(0x76);
   if (!status){
@@ -122,6 +122,7 @@ void setup() {
   tft.fillScreen(ST77XX_BLACK);
   
   setup_wifi();
+  firstCallOpenWeatherMap();
   client.setServer(mqtt_server, mqtt_port);
   
 }
@@ -154,7 +155,7 @@ void changeDisplay()
   if (millis() - debounceTimer >= debounce)
   {
     mode = mode + 1;
-    if (mode == 4)
+    if (mode == 3)
     {
       mode = 0;
     }
@@ -198,6 +199,33 @@ void getOpenWeatherMapData()
   }
 }
 
+void firstCallOpenWeatherMap()
+{
+    // Check WiFi connection status
+    if(WiFi.status()== WL_CONNECTED){ 
+           
+      jsonBuffer = httpGETRequest(serverPath.c_str());
+
+      Serial.println(jsonBuffer);
+
+      JSONVar myObject = JSON.parse(jsonBuffer);
+
+      Serial.println (JSON.typeof(myObject));
+      
+      // JSON.typeof(jsonVar) can be used to get the type of the var
+      if (JSON.typeof(myObject) == "undefined") {
+        Serial.println("Parsing input failed!");
+        return;
+      }
+      
+      tempPublic = myObject["main"]["temp"];
+      humidPublic = myObject["main"]["humidity"];
+      hPaPublic = myObject["main"]["pressure"];
+//      Serial.print("JSON object = ");
+//      Serial.println(myObject);
+    }
+}
+
 //Send HTTP GET request to Server and return responeded Json string as payload
 String httpGETRequest(const char* serverName) {
   HTTPClient http;
@@ -230,43 +258,43 @@ void displayContent()
 {
   switch (mode){
     case 0:
-      if (millis() - preTimeDisplay >= delayDisplay) {
-        displayCount = displayCount + 1;
-        if (displayCount == 4)
-        {
-          displayCount = 0;
-        }
-        if (displayCount == 0){
-          tft.fillScreen(ST77XX_BLACK);
-          displayTemp();
-        }
-        if (displayCount == 1){
-          tft.fillScreen(ST77XX_BLACK);
-          displayHumid();
-        }
-        if (displayCount == 2){
-          tft.fillScreen(ST77XX_BLACK);
-          displayhPa();
-        }
-        if (displayCount == 3){
-          tft.fillScreen(ST77XX_BLACK);
-          displayPMS();
-        }
-        preTimeDisplay = millis();
-      }
-      break;
-      
-    case 1:
       displayBME();
       break;
 
-    case 2:
+    case 1:
       displayPMS();
       break;
       
-    case 3:
+    case 2:
       displayOpenWeatherMap();
       break;
+
+//    case 3:
+//      if (millis() - preTimeDisplay >= delayDisplay) {
+//        displayCount = displayCount + 1;
+//        if (displayCount == 4)
+//        {
+//          displayCount = 0;
+//        }
+//        if (displayCount == 0){
+//          tft.fillScreen(ST77XX_BLACK);
+//          displayTemp();
+//        }
+//        if (displayCount == 1){
+//          tft.fillScreen(ST77XX_BLACK);
+//          displayHumid();
+//        }
+//        if (displayCount == 2){
+//          tft.fillScreen(ST77XX_BLACK);
+//          displayhPa();
+//        }
+//        if (displayCount == 3){
+//          tft.fillScreen(ST77XX_BLACK);
+//          displayPMS();
+//        }
+//        preTimeDisplay = millis();
+//      }
+//      break;
   }
 }
 
@@ -330,6 +358,8 @@ void setup_wifi()
 //  Serial.println("WiFi connected");
 //  Serial.println("IP address: ");
 //  Serial.println(WiFi.localIP());
+  delay(1000);
+  tft.fillScreen(ST77XX_BLACK);
 }
 
 //Check connection to MQTT server
@@ -407,99 +437,128 @@ void displayhPa()
 void displayPMS()
 {
   tft.setTextWrap(false);
+  
+  tft.setCursor(0,2);
+  tft.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+  tft.setTextSize(1);
+  tft.println("PARTICULATE MATTER  ");
+  
   tft.setCursor(0,20);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.print("PM 1.0: ");
+  tft.print("PM 1.0(ug/m3)");
+  tft.println("                               ");
   tft.setCursor(0,30);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(pm1_0);
+  tft.print(pm1_0);
+  tft.println("                               ");
 
   tft.setCursor(0,55);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.print("PM 2.5: ");
+  tft.print("PM 2.5(ug/m3)");
+  tft.println("                               ");
   tft.setCursor(0,65);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(pm2_5);
+  tft.print(pm2_5);
+  tft.println("                               ");
 
   tft.setCursor(0,90);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.print("PM 10.0: ");
+  tft.print("PM 10.0(ug/m3)");
+  tft.println("                               ");
   tft.setCursor(0,100);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(pm10_0);
+  tft.print(pm10_0);
+  tft.println("                               ");
 }
 
 void displayBME()
 {
   tft.setTextWrap(false);
-
+  
+  tft.setCursor(0,2);
+  tft.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+  tft.setTextSize(1);
+  tft.println("LOCAL WEATHER       ");
+  
   tft.setCursor(0,20);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.println("TEMPERATURE(C)");
+  tft.print("TEMPERATURE(C)");
+  tft.println("                               ");
   tft.setCursor(0,30);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(temp);
+  tft.print(temp);
+  tft.println("                               ");
 
   tft.setCursor(0,55);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.println("HUMIDITY(%)");
+  tft.print("HUMIDITY(%)");
+  tft.println("                               ");
   tft.setCursor(0,65);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(humid);
+  tft.print(humid);
+  tft.println("                               ");
 
   tft.setCursor(0,90);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.println("PRESSURE(hPa)");
+  tft.print("PRESSURE(hPa)");
+  tft.println("                               ");
   tft.setCursor(0,100);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(hPa);
+  tft.print(hPa);
+  tft.println("                               ");
 }
 
 void displayOpenWeatherMap()
 {
   tft.setTextWrap(false);
   
-  tft.setCursor(1,2);
+  tft.setCursor(0,2);
   tft.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.println("Open Weather Map");
+  tft.println("OPEN WEATHER MAP     ");
   
   tft.setCursor(0,20);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.println("TEMPERATURE(C)");
+  tft.print("TEMPERATURE(C)");
+  tft.println("                               ");
   tft.setCursor(0,30);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(tempPublic);
+  tft.print(tempPublic);
+  tft.println("                               ");
 
   tft.setCursor(0,55);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.println("HUMIDITY(%)");
+  tft.print("HUMIDITY(%)");
+  tft.println("                               ");
   tft.setCursor(0,65);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(humidPublic);
+  tft.print(humidPublic);
+  tft.println("                               ");
 
   tft.setCursor(0,90);
   tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
   tft.setTextSize(1);
-  tft.println("PRESSURE(hPa)");
+  tft.print("PRESSURE(hPa)");
+  tft.println("                               ");
   tft.setCursor(0,100);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.println(hPaPublic);
+  tft.print(hPaPublic);
+  tft.println("                               ");
 }
